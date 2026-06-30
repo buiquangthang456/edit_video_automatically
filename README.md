@@ -1,0 +1,1 @@
+echo "# Movie Auto Editor" > README.md
