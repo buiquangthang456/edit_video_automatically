@@ -124,7 +124,7 @@ class FFmpegEngine:
         )
 
     def add_voice(self, video: Path, voice: Path, output: Path) -> None:
-        """Attach the provided voice-over as the final audio track."""
+        """Replace any video audio with the provided voice-over track."""
         self._run(
             [
                 self.ffmpeg_bin,
@@ -133,15 +133,23 @@ class FFmpegEngine:
                 str(video),
                 "-i",
                 str(voice),
+                "-filter_complex",
+                "[1:a:0]asetpts=PTS-STARTPTS,aresample=async=1:first_pts=0,volume=1.25,apad[voice_audio]",
                 "-map",
                 "0:v:0",
                 "-map",
-                "1:a:0",
+                "[voice_audio]",
                 "-shortest",
+                "-map_metadata",
+                "-1",
+                "-map_chapters",
+                "-1",
                 "-c:v",
-                "copy",
-                "-af",
-                "asetpts=PTS-STARTPTS,aresample=async=1:first_pts=0,volume=1.25",
+                "libx264",
+                "-preset",
+                "veryfast",
+                "-crf",
+                "23",
                 "-c:a",
                 "aac",
                 "-b:a",

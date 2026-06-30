@@ -100,11 +100,11 @@ Nếu file không có dòng trống, ứng dụng sẽ tự chia kịch bản th
 - Crop/scale về đúng tỉ lệ xuất.
 - Thêm phụ đề từ kịch bản.
 - Ghép tất cả clip lại.
-- Gắn voice-over làm âm thanh chính.
+- Xóa toàn bộ âm thanh gốc của video phim và thay bằng voice-over bạn chọn.
 
 ## Nếu video xuất ra không có tiếng
 
-Phiên bản hiện tại sẽ kiểm tra file voice-over có audio stream trước khi render và kiểm tra lại video output sau khi gắn voice. Nếu app báo lỗi không có tiếng, hãy thử:
+Phiên bản hiện tại sẽ xóa âm thanh gốc của video phim, thay bằng file voice-over bạn chọn, kiểm tra file voice-over có audio stream trước khi render và kiểm tra lại video output sau khi gắn voice. Nếu app báo lỗi không có tiếng, hãy thử:
 
 1. Mở file voice-over bằng trình nghe nhạc để chắc chắn file có tiếng.
 2. Đổi voice-over sang `.wav` hoặc `.mp3` rồi render lại.
