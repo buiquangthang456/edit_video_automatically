@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 
 from core.segmentation import make_segments
@@ -14,8 +15,13 @@ from utils.validation import validate_inputs
 class VideoProcessor:
     """Orchestrates script parsing, segmentation, rendering, and audio mapping."""
 
-    def __init__(self, engine: FFmpegEngine | None = None) -> None:
-        self.engine = engine or FFmpegEngine()
+    def __init__(
+        self,
+        engine: FFmpegEngine | None = None,
+        logger: Callable[[str], None] | None = None,
+    ) -> None:
+        self.logger = logger or print
+        self.engine = engine or FFmpegEngine(logger=self.logger)
 
     def render(self, config: RenderConfig) -> None:
         """Render the final review video for the provided config."""
@@ -28,7 +34,7 @@ class VideoProcessor:
         movie_duration = self.engine.duration(config.movie)
         segments = make_segments(script_blocks, voice_duration, movie_duration)
 
-        print(f"Tạo {len(segments)} đoạn clip theo kịch bản ({voice_duration:.1f}s voice-over).")
+        self._log(f"Tạo {len(segments)} đoạn clip theo kịch bản ({voice_duration:.1f}s voice-over).")
         with tempfile.TemporaryDirectory(prefix="auto-review-editor-") as temp_dir:
             temp_path = Path(temp_dir)
             clips: list[Path] = []
@@ -41,8 +47,11 @@ class VideoProcessor:
             self.engine.concat_clips(clips, silent_video)
             self.engine.add_voice(silent_video, config.voice, config.output)
 
-        print(f"\nHoàn tất: {config.output}")
-        print(
+        self._log(f"\nHoàn tất: {config.output}")
+        self._log(
             "Lưu ý: Không có công cụ nào bảo đảm tránh bản quyền/Content ID. "
             "Hãy dùng clip ngắn, thêm bình luận thật sự, và kiểm tra luật fair use."
         )
+
+    def _log(self, message: str) -> None:
+        self.logger(message)

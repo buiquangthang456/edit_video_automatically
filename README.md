@@ -1,4 +1,3 @@
-echo "# Movie Auto Editor" > README.md
 # Movie Auto Editor
 
 Ứng dụng Python này tự dựng video review từ 3 file người dùng cung cấp:
@@ -58,6 +57,25 @@ python auto_review_editor.py \
   --resolution 1920:1080
 ```
 
+
+## Chạy giao diện desktop
+
+Nếu bạn không muốn dùng lệnh CLI, chạy giao diện chọn file bằng Tkinter:
+
+```bash
+python auto_review_gui.py
+```
+
+Trong giao diện, chọn lần lượt:
+
+1. File kịch bản `.txt`
+2. File voice-over `.mp3`, `.wav`, `.m4a`, ...
+3. File video phim `.mp4`, `.mkv`, `.mov`, ...
+4. Nơi lưu video xuất ra
+5. Tỉ lệ xuất, ví dụ `1080:1920` cho video dọc hoặc `1920:1080` cho video ngang
+
+Sau đó bấm **Bắt đầu dựng video** và theo dõi log trong app.
+
 ## Cách chuẩn bị kịch bản
 
 Nên chia kịch bản thành nhiều đoạn, cách nhau bằng một dòng trống. Mỗi đoạn sẽ được dùng để tạo một clip và phụ đề tương ứng.
@@ -107,11 +125,13 @@ models/               # Dataclass và config models
 utils/                # Helper đọc text, escape subtitle, validate input
 tests/                # Unit test cho logic cơ bản
 auto_review_editor.py # Wrapper tương thích ngược để chạy CLI
+auto_review_gui.py    # Launcher giao diện desktop Tkinter
 ```
 
 Các module quan trọng:
 
 - `app/cli.py`: parse tham số CLI và tạo `RenderConfig`.
+- `app/gui.py`: giao diện desktop để chọn file, chọn tỉ lệ xuất và xem log render.
 - `core/video_processor.py`: điều phối toàn bộ workflow dựng video.
 - `core/segmentation.py`: chia kịch bản và timeline theo thời lượng voice-over.
 - `engines/ffmpeg_engine.py`: tập trung toàn bộ lệnh FFmpeg/FFprobe.
@@ -124,5 +144,5 @@ Các module quan trọng:
 
 ```bash
 python -m unittest discover tests
-python -m compileall app core engines models utils tests auto_review_editor.py
+python -m compileall app core engines models utils tests auto_review_editor.py auto_review_gui.py
 ```

@@ -4,8 +4,8 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import Iterable
 
 from models.segment import Segment
 from utils.text import escape_drawtext, shorten_caption
@@ -14,9 +14,15 @@ from utils.text import escape_drawtext, shorten_caption
 class FFmpegEngine:
     """Small wrapper around FFmpeg/FFprobe commands used by the editor."""
 
-    def __init__(self, ffmpeg_bin: str = "ffmpeg", ffprobe_bin: str = "ffprobe") -> None:
+    def __init__(
+        self,
+        ffmpeg_bin: str = "ffmpeg",
+        ffprobe_bin: str = "ffprobe",
+        logger: Callable[[str], None] | None = None,
+    ) -> None:
         self.ffmpeg_bin = ffmpeg_bin
         self.ffprobe_bin = ffprobe_bin
+        self.logger = logger or print
 
     def require_tools(self) -> None:
         """Ensure FFmpeg and FFprobe are available in PATH."""
@@ -134,12 +140,15 @@ class FFmpegEngine:
         )
 
     def _run(self, command: list[str]) -> None:
-        print("\n$ " + " ".join(command))
+        self._log("\n$ " + " ".join(command))
         completed = subprocess.run(command, text=True)
         if completed.returncode != 0:
             raise RuntimeError(
                 f"Lệnh thất bại với mã {completed.returncode}: {' '.join(command)}"
             )
+
+    def _log(self, message: str) -> None:
+        self.logger(message)
 
     @staticmethod
     def _require_tool(name: str) -> None:
