@@ -17,6 +17,10 @@ class FakeEngine:
         self.calls.append(("has_audio_stream", path.name))
         return True
 
+    def has_audible_audio(self, path):
+        self.calls.append(("has_audible_audio", path.name))
+        return True
+
     def duration(self, path):
         if path.suffix == ".mp3":
             return 4.0
@@ -38,6 +42,12 @@ class FakeEngine:
 class NoAudioFakeEngine(FakeEngine):
     def has_audio_stream(self, path):
         self.calls.append(("has_audio_stream", path.name))
+        return False
+
+
+class SilentAudioFakeEngine(FakeEngine):
+    def has_audible_audio(self, path):
+        self.calls.append(("has_audible_audio", path.name))
         return False
 
 
@@ -68,6 +78,7 @@ class VideoProcessorTests(unittest.TestCase):
             self.assertTrue(output.exists())
             self.assertIn(("require_tools",), engine.calls)
             self.assertIn(("has_audio_stream", "voice.mp3"), engine.calls)
+            self.assertIn(("has_audible_audio", "voice.mp3"), engine.calls)
             self.assertEqual(
                 [call[0] for call in engine.calls].count("build_clip"),
                 2,
@@ -88,6 +99,27 @@ class VideoProcessorTests(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "không có audio stream"):
                 VideoProcessor(engine=NoAudioFakeEngine()).render(
+                    RenderConfig(
+                        script=script,
+                        voice=voice,
+                        movie=movie,
+                        output=output,
+                    )
+                )
+
+    def test_render_rejects_silent_voice(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            script = root / "script.txt"
+            voice = root / "voice.mp3"
+            movie = root / "movie.mp4"
+            output = root / "out" / "review.mp4"
+            script.write_text("Đoạn 1", encoding="utf-8")
+            voice.write_text("silent audio", encoding="utf-8")
+            movie.write_text("movie", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "không có tiếng"):
+                VideoProcessor(engine=SilentAudioFakeEngine()).render(
                     RenderConfig(
                         script=script,
                         voice=voice,

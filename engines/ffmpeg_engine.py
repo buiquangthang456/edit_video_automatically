@@ -2,13 +2,15 @@
 from __future__ import annotations
 
 import json
+import os
+import re
 import shutil
 import subprocess
 from collections.abc import Callable, Iterable
 from pathlib import Path
 
 from models.segment import Segment
-from utils.text import escape_drawtext, shorten_caption
+from utils.text import escape_ass
 
 
 class FFmpegEngine:
@@ -65,14 +67,49 @@ class FFmpegEngine:
         data = json.loads(result.stdout)
         return bool(data.get("streams"))
 
+    def has_audible_audio(self, path: Path, silence_threshold_db: float = -60.0) -> bool:
+        """Return True when the first audio stream contains a non-silent signal."""
+        self._require_tool(self.ffmpeg_bin)
+        command = [
+            self.ffmpeg_bin,
+            "-hide_banner",
+            "-nostats",
+            "-i",
+            str(path),
+            "-map",
+            "0:a:0",
+            "-af",
+            "volumedetect",
+            "-f",
+            "null",
+            os.devnull,
+        ]
+        completed = subprocess.run(command, capture_output=True, text=True)
+        if completed.returncode != 0:
+            raise RuntimeError(f"Không thể kiểm tra âm lượng của file: {path}")
+
+        match = re.search(
+            r"max_volume:\s*(?P<peak>-?inf|[-+]?\d+(?:\.\d+)?)\s*dB",
+            completed.stderr,
+            flags=re.IGNORECASE,
+        )
+        if match is None:
+            raise RuntimeError(f"FFmpeg không trả về mức âm lượng của file: {path}")
+        peak = match.group("peak").lower()
+        peak_db = float("-inf") if peak == "-inf" else float(peak)
+        return peak_db > silence_threshold_db
+
     def build_clip(self, movie: Path, segment: Segment, clip_path: Path, resolution: str) -> None:
         """Render a transformed silent clip for one timeline segment."""
+        width, height = self._parse_resolution(resolution)
+        subtitle_path = clip_path.with_suffix(".subtitle.ass")
+        self._write_subtitle_file(subtitle_path, segment.text, width, height)
         video_filter = ",".join(
             [
                 f"scale={resolution}:force_original_aspect_ratio=increase",
                 f"crop={resolution}",
                 "eq=contrast=1.06:saturation=0.92",
-                self._subtitle_filter(segment.text),
+                self._subtitle_filter(subtitle_path),
             ]
         )
         self._run(
@@ -140,12 +177,24 @@ class FFmpegEngine:
                 "-shortest",
                 "-c:v",
                 "copy",
-                "-af",
-                "asetpts=PTS-STARTPTS,aresample=async=1:first_pts=0,volume=1.25",
+                "-filter:a",
+                (
+                    "asetpts=PTS-STARTPTS,"
+                    "aresample=48000:async=1:first_pts=0,"
+                    "loudnorm=I=-16:TP=-1.5:LRA=11"
+                ),
                 "-c:a",
                 "aac",
                 "-b:a",
                 "192k",
+                "-ar",
+                "48000",
+                "-ac",
+                "2",
+                "-metadata:s:a:0",
+                "language=vie",
+                "-disposition:a:0",
+                "default",
                 "-movflags",
                 "+faststart",
                 str(output),
@@ -153,16 +202,64 @@ class FFmpegEngine:
         )
         if not self.has_audio_stream(output):
             raise RuntimeError("Video xuất ra không có audio. Hãy kiểm tra lại file voice-over đầu vào.")
+        if not self.has_audible_audio(output):
+            raise RuntimeError("Audio trong video xuất ra đang im lặng. Hãy kiểm tra file voice-over đầu vào.")
 
-    def _subtitle_filter(self, text: str) -> str:
-        caption = escape_drawtext(shorten_caption(text))
+    def _write_subtitle_file(self, path: Path, text: str, width: int, height: int) -> None:
+        """Write a resolution-aware ASS caption that wraps inside safe margins."""
+        base_size = min(width, height)
+        font_size = max(24, round(base_size * 38 / 720))
+        horizontal_margin = max(round(width * 0.06), font_size)
+        vertical_margin = max(round(base_size * 0.08), font_size)
+        box_padding = max(8, round(font_size * 0.42))
+        caption = escape_ass(text)
+        document = f"""[Script Info]
+ScriptType: v4.00+
+PlayResX: {width}
+PlayResY: {height}
+WrapStyle: 0
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Caption,Arial,{font_size},&H00FFFFFF,&H00FFFFFF,&H60000000,&H60000000,0,0,0,0,100,100,0,0,3,{box_padding},0,2,{horizontal_margin},{horizontal_margin},{vertical_margin},1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,9:59:59.99,Caption,,0,0,0,,{caption}
+"""
+        path.write_text(document, encoding="utf-8-sig")
+
+    def _subtitle_filter(self, subtitle_path: Path) -> str:
+        escaped_path = self._escape_filter_path(subtitle_path)
+        return f"subtitles=filename='{escaped_path}'"
+
+    @staticmethod
+    def _escape_filter_path(path: Path) -> str:
+        """Escape an absolute path for use in an FFmpeg filter option."""
         return (
-            "drawtext="
-            f"text='{caption}':"
-            "fontcolor=white:fontsize=38:line_spacing=10:"
-            "box=1:boxcolor=black@0.62:boxborderw=20:"
-            "x=(w-text_w)/2:y=h-text_h-70"
+            path.resolve()
+            .as_posix()
+            .replace("\\", r"\\")
+            .replace(":", r"\:")
+            .replace("'", r"\'")
+            .replace(",", r"\,")
+            .replace("[", r"\[")
+            .replace("]", r"\]")
+            .replace(";", r"\;")
         )
+
+    @staticmethod
+    def _parse_resolution(resolution: str) -> tuple[int, int]:
+        """Parse an FFmpeg width:height string and reject invalid dimensions."""
+        try:
+            width_text, height_text = resolution.split(":")
+            width, height = int(width_text), int(height_text)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Tỉ lệ xuất phải có dạng rộng:cao, ví dụ 1280:720.") from exc
+        if width <= 0 or height <= 0:
+            raise ValueError("Chiều rộng và chiều cao video phải lớn hơn 0.")
+        return width, height
 
     def _run(self, command: list[str]) -> None:
         self._log("\n$ " + " ".join(command))

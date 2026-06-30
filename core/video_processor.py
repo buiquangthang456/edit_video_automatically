@@ -32,6 +32,8 @@ class VideoProcessor:
         script_blocks = read_script(config.script)
         if not self.engine.has_audio_stream(config.voice):
             raise ValueError("File voice-over không có audio stream. Hãy chọn đúng file âm thanh.")
+        if not self.engine.has_audible_audio(config.voice):
+            raise ValueError("File voice-over không có tiếng hoặc âm lượng quá nhỏ. Hãy kiểm tra lại file âm thanh.")
 
         voice_duration = self.engine.duration(config.voice)
         movie_duration = self.engine.duration(config.movie)
