@@ -102,6 +102,15 @@ Nếu file không có dòng trống, ứng dụng sẽ tự chia kịch bản th
 - Ghép tất cả clip lại.
 - Gắn voice-over làm âm thanh chính.
 
+## Nếu video xuất ra không có tiếng
+
+Phiên bản hiện tại sẽ kiểm tra file voice-over có audio stream trước khi render và kiểm tra lại video output sau khi gắn voice. Nếu app báo lỗi không có tiếng, hãy thử:
+
+1. Mở file voice-over bằng trình nghe nhạc để chắc chắn file có tiếng.
+2. Đổi voice-over sang `.wav` hoặc `.mp3` rồi render lại.
+3. Kiểm tra log trong app để xem FFmpeg có báo lỗi audio không.
+4. Đảm bảo bạn chọn đúng file voice ở ô **Voice-over**, không chọn nhầm file text/video.
+
 ## Gợi ý để video review an toàn hơn
 
 Không có mẹo kỹ thuật nào bảo đảm tránh khiếu nại bản quyền. Thay vào đó, hãy tập trung vào nội dung review thật sự:

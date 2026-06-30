@@ -30,6 +30,9 @@ class VideoProcessor:
         config.output.parent.mkdir(parents=True, exist_ok=True)
 
         script_blocks = read_script(config.script)
+        if not self.engine.has_audio_stream(config.voice):
+            raise ValueError("File voice-over không có audio stream. Hãy chọn đúng file âm thanh.")
+
         voice_duration = self.engine.duration(config.voice)
         movie_duration = self.engine.duration(config.movie)
         segments = make_segments(script_blocks, voice_duration, movie_duration)

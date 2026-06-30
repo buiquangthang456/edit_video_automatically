@@ -46,6 +46,25 @@ class FFmpegEngine:
         data = json.loads(result.stdout)
         return float(data["format"]["duration"])
 
+    def has_audio_stream(self, path: Path) -> bool:
+        """Return True when the media file contains at least one audio stream."""
+        self._require_tool(self.ffprobe_bin)
+        command = [
+            self.ffprobe_bin,
+            "-v",
+            "error",
+            "-select_streams",
+            "a",
+            "-show_entries",
+            "stream=index",
+            "-of",
+            "json",
+            str(path),
+        ]
+        result = subprocess.run(command, capture_output=True, check=True, text=True)
+        data = json.loads(result.stdout)
+        return bool(data.get("streams"))
+
     def build_clip(self, movie: Path, segment: Segment, clip_path: Path, resolution: str) -> None:
         """Render a transformed silent clip for one timeline segment."""
         video_filter = ",".join(
@@ -121,13 +140,19 @@ class FFmpegEngine:
                 "-shortest",
                 "-c:v",
                 "copy",
+                "-af",
+                "asetpts=PTS-STARTPTS,aresample=async=1:first_pts=0,volume=1.25",
                 "-c:a",
                 "aac",
                 "-b:a",
                 "192k",
+                "-movflags",
+                "+faststart",
                 str(output),
             ]
         )
+        if not self.has_audio_stream(output):
+            raise RuntimeError("Video xuất ra không có audio. Hãy kiểm tra lại file voice-over đầu vào.")
 
     def _subtitle_filter(self, text: str) -> str:
         caption = escape_drawtext(shorten_caption(text))
