@@ -59,6 +59,9 @@ class FFmpegEngineAudioTests(unittest.TestCase):
         command = run_mock.call_args.args[0]
         audio_filter = command[command.index("-filter:a") + 1]
         self.assertIn("loudnorm=I=-16:TP=-1.5:LRA=11", audio_filter)
+        self.assertTrue(audio_filter.endswith("apad"))
+        self.assertEqual(command[command.index("-map_metadata") + 1], "-1")
+        self.assertEqual(command[command.index("-map_chapters") + 1], "-1")
         self.assertEqual(command[command.index("-ar") + 1], "48000")
         self.assertEqual(command[command.index("-ac") + 1], "2")
         self.assertEqual(command[command.index("-disposition:a:0") + 1], "default")
