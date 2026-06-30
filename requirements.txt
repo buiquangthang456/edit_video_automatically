@@ -1,0 +1,1 @@
+# Không cần thư viện Python bên ngoài. Ứng dụng dùng Python standard library và FFmpeg/FFprobe trong PATH.
