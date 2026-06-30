@@ -32,6 +32,19 @@ def escape_drawtext(text: str) -> str:
     )
 
 
+def wrap_caption(text: str, width: int) -> str:
+    """Wrap a caption into multiple lines without splitting normal words."""
+    normalized = " ".join(text.split())
+    return "\n".join(
+        textwrap.wrap(
+            normalized,
+            width=max(1, width),
+            break_long_words=False,
+            break_on_hyphens=False,
+        )
+    )
+
+
 def shorten_caption(text: str, width: int = 130) -> str:
     """Shorten a subtitle caption without splitting words aggressively."""
     return textwrap.shorten(text, width=width, placeholder="...")
