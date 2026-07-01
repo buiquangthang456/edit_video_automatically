@@ -2,7 +2,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from utils.text import MAX_CAPTION_CHARS, escape_ass, escape_drawtext, read_script, shorten_caption
+from utils.text import (
+    MAX_CAPTION_CHARS,
+    escape_ass,
+    escape_drawtext,
+    read_script,
+    read_script_sections,
+    shorten_caption,
+)
 
 
 class TextUtilsTests(unittest.TestCase):
@@ -12,6 +19,16 @@ class TextUtilsTests(unittest.TestCase):
             script.write_text("Đoạn 1\n\nĐoạn 2", encoding="utf-8")
 
             self.assertEqual(read_script(script), ["Đoạn 1", "Đoạn 2"])
+
+    def test_read_script_preserves_paragraphs_and_sentence_boundaries(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            script = Path(temp_dir) / "script.txt"
+            script.write_text("Câu đầu. Câu sau!\n\nĐoạn thứ hai.", encoding="utf-8")
+
+            self.assertEqual(
+                read_script_sections(script),
+                [["Câu đầu.", "Câu sau!"], ["Đoạn thứ hai."]],
+            )
 
     def test_read_script_rejects_empty_file(self):
         with tempfile.TemporaryDirectory() as temp_dir:

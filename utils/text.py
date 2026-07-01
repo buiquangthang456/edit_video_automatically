@@ -1,32 +1,50 @@
 """Text parsing and escaping helpers."""
 from __future__ import annotations
 
+import re
 import textwrap
 from pathlib import Path
 
 
-MAX_CAPTION_CHARS = 110
+MAX_CAPTION_CHARS = 96
+
+
+_SENTENCE_BOUNDARY = re.compile(r"(?<=[.!?…])\s+")
 
 
 def read_script(path: Path) -> list[str]:
-    """Read a UTF-8 text script and split it into renderable blocks."""
+    """Read a UTF-8 text script and return all renderable captions."""
+    return [caption for section in read_script_sections(path) for caption in section]
+
+
+def read_script_sections(path: Path) -> list[list[str]]:
+    """Read a script while preserving paragraphs for source-scene alignment.
+
+    Blank lines describe logical sections of the story.  Within each section,
+    sentence boundaries are kept whenever possible so subtitle changes can be
+    snapped to natural pauses in the voice-over.
+    """
     text = path.read_text(encoding="utf-8-sig").strip()
     if not text:
         raise ValueError("File kịch bản đang trống.")
 
-    blocks: list[str] = []
-    paragraphs = [block for block in text.split("\n\n") if block.strip()]
+    sections: list[list[str]] = []
+    paragraphs = [block for block in re.split(r"\n\s*\n", text) if block.strip()]
     for paragraph in paragraphs:
         normalized = " ".join(paragraph.split())
-        blocks.extend(
-            textwrap.wrap(
-                normalized,
-                width=MAX_CAPTION_CHARS,
-                break_long_words=True,
-                break_on_hyphens=False,
+        captions: list[str] = []
+        for sentence in _SENTENCE_BOUNDARY.split(normalized):
+            captions.extend(
+                textwrap.wrap(
+                    sentence,
+                    width=MAX_CAPTION_CHARS,
+                    break_long_words=True,
+                    break_on_hyphens=False,
+                )
             )
-        )
-    return blocks
+        if captions:
+            sections.append(captions)
+    return sections
 
 
 def escape_drawtext(text: str) -> str:

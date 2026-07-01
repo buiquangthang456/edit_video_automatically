@@ -78,7 +78,7 @@ Sau đó bấm **Bắt đầu dựng video** và theo dõi log trong app.
 
 ## Cách chuẩn bị kịch bản
 
-Nên chia kịch bản thành nhiều đoạn, cách nhau bằng một dòng trống. Mỗi đoạn sẽ được dùng để tạo một clip và phụ đề tương ứng.
+Nên chia kịch bản thành nhiều đoạn, cách nhau bằng một dòng trống. Mỗi đoạn nên mô tả một phần liên tục của câu chuyện để nội dung dễ kiểm soát. Ứng dụng sẽ tự tách từng câu thành phụ đề ngắn, sau đó căn từng câu với cảnh nguồn.
 
 Ví dụ `script.txt`:
 
@@ -90,17 +90,18 @@ Hôm nay mình review nhanh bộ phim này và lý do cảnh mở đầu rất q
 Đoạn kết tạo cảm giác bất ngờ vì chi tiết này đã được cài từ đầu.
 ```
 
-Nếu file không có dòng trống, ứng dụng sẽ tự chia kịch bản thành các đoạn ngắn.
+Nếu file không có dòng trống, ứng dụng vẫn tự tách theo câu và độ dài phụ đề. Tuy nhiên, ngắt đoạn đúng theo từng phần của câu chuyện sẽ giúp chọn cảnh chính xác hơn.
 
 ## Ứng dụng đang tự làm gì?
 
-- Đọc thời lượng voice-over bằng FFprobe.
-- Chia kịch bản thành các phân đoạn theo độ dài chữ.
-- Lấy các đoạn video ngắn rải đều từ phim nguồn.
+- Đọc thời lượng voice-over bằng FFprobe và dò các khoảng nghỉ tự nhiên trong giọng đọc.
+- Tách kịch bản theo đoạn, câu và giới hạn độ dài phụ đề; căn thời điểm đổi phụ đề vào khoảng nghỉ gần nhất của voice.
+- Nếu video có phụ đề chữ nhúng, dùng tên nhân vật, địa danh, số và từ khóa chung để căn kịch bản với timeline câu thoại của phim theo đúng thứ tự câu chuyện.
+- Bám keyframe gần nhất khi phù hợp để hạn chế bắt đầu clip giữa cảnh. Nếu video không có phụ đề chữ, ứng dụng tự quay về cách lấy cảnh theo thứ tự thời gian.
 - Crop/scale về đúng tỉ lệ xuất.
 - Thêm phụ đề từ kịch bản.
 - Ghép tất cả clip lại.
-- Xóa toàn bộ âm thanh gốc của video phim và thay bằng voice-over bạn chọn.
+- Xóa toàn bộ âm thanh gốc, thay bằng voice-over, chuẩn hóa âm lượng và chốt thời lượng output đúng bằng voice.
 
 ## Nếu video xuất ra không có tiếng
 
@@ -143,8 +144,9 @@ Các module quan trọng:
 - `app/gui.py`: giao diện desktop để chọn file, chọn tỉ lệ xuất và xem log render.
 - `core/video_processor.py`: điều phối toàn bộ workflow dựng video.
 - `core/segmentation.py`: chia kịch bản và timeline theo thời lượng voice-over.
+- `core/alignment.py`: căn các câu trong kịch bản với timeline phụ đề của video nguồn.
 - `engines/ffmpeg_engine.py`: tập trung toàn bộ lệnh FFmpeg/FFprobe.
-- `models/config.py` và `models/segment.py`: cấu trúc dữ liệu chính.
+- `models/config.py`, `models/segment.py` và `models/subtitle.py`: cấu trúc dữ liệu chính.
 - `utils/text.py` và `utils/validation.py`: helper xử lý text và kiểm tra input.
 - `requirements.txt`: ghi chú rằng không cần package Python ngoài.
 - `outputs/`: thư mục xuất video, được tạo tự động khi chạy.

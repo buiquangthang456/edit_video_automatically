@@ -32,6 +32,21 @@ class FFmpegEngineSubtitleTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     FFmpegEngine._parse_resolution(resolution)
 
+    def test_parse_ass_cues_keeps_speaker_and_ignores_signs(self):
+        document = "\n".join(
+            [
+                "Dialogue: 0,0:00:02.00,0:00:04.50,main,Koichi,0,0,0,,Hello\\Nworld",
+                "Dialogue: 0,0:00:05.00,0:00:06.00,sign_Arial,Sign,0,0,0,,Shop",
+            ]
+        )
+
+        cues = FFmpegEngine._parse_ass_cues(document)
+
+        self.assertEqual(len(cues), 1)
+        self.assertEqual(cues[0].start, 2.0)
+        self.assertEqual(cues[0].end, 4.5)
+        self.assertEqual(cues[0].text, "Koichi Hello world")
+
 
 class FFmpegEngineAudioTests(unittest.TestCase):
     @patch("engines.ffmpeg_engine.shutil.which", return_value="ffmpeg")
@@ -47,6 +62,21 @@ class FFmpegEngineAudioTests(unittest.TestCase):
         run_mock.return_value.stderr = "[Parsed_volumedetect] max_volume: -inf dB"
         self.assertFalse(FFmpegEngine().has_audible_audio(Path("silent.mp3")))
 
+    @patch("engines.ffmpeg_engine.subprocess.run")
+    def test_voice_pause_boundaries_pairs_silence_events_in_order(self, run_mock):
+        run_mock.return_value = Mock(
+            returncode=0,
+            stderr=(
+                "silence_start: 1.0\nsilence_end: 1.6 | silence_duration: 0.6\n"
+                "silence_start: 4.0"
+            ),
+        )
+
+        self.assertEqual(
+            FFmpegEngine().voice_pause_boundaries(Path("voice.mp3")),
+            [1.3],
+        )
+
     def test_add_voice_encodes_compatible_default_stereo_audio(self):
         engine = FFmpegEngine()
         with (
@@ -54,7 +84,12 @@ class FFmpegEngineAudioTests(unittest.TestCase):
             patch.object(engine, "has_audio_stream", return_value=True),
             patch.object(engine, "has_audible_audio", return_value=True),
         ):
-            engine.add_voice(Path("video.mp4"), Path("voice.mp3"), Path("output.mp4"))
+            engine.add_voice(
+                Path("video.mp4"),
+                Path("voice.mp3"),
+                Path("output.mp4"),
+                target_duration=12.345,
+            )
 
         command = run_mock.call_args.args[0]
         audio_filter = command[command.index("-filter:a") + 1]
@@ -65,6 +100,7 @@ class FFmpegEngineAudioTests(unittest.TestCase):
         self.assertEqual(command[command.index("-ar") + 1], "48000")
         self.assertEqual(command[command.index("-ac") + 1], "2")
         self.assertEqual(command[command.index("-disposition:a:0") + 1], "default")
+        self.assertEqual(command[command.index("-t") + 1], "12.345")
 
 
 if __name__ == "__main__":

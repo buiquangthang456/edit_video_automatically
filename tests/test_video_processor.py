@@ -26,6 +26,18 @@ class FakeEngine:
             return 4.0
         return 20.0
 
+    def voice_pause_boundaries(self, path):
+        self.calls.append(("voice_pause_boundaries", path.name))
+        return [2.0]
+
+    def subtitle_cues(self, path):
+        self.calls.append(("subtitle_cues", path.name))
+        return []
+
+    def keyframe_times(self, path):
+        self.calls.append(("keyframe_times", path.name))
+        return []
+
     def build_clip(self, movie, segment, clip_path, resolution):
         self.calls.append(("build_clip", movie, segment.index, resolution))
         clip_path.write_text("clip", encoding="utf-8")
@@ -34,8 +46,8 @@ class FakeEngine:
         self.calls.append(("concat_clips", len(list(clips))))
         output.write_text("silent", encoding="utf-8")
 
-    def add_voice(self, video, voice, output):
-        self.calls.append(("add_voice", video.name, voice.name, output.name))
+    def add_voice(self, video, voice, output, target_duration=None):
+        self.calls.append(("add_voice", video.name, voice.name, output.name, target_duration))
         output.write_text("final", encoding="utf-8")
 
 
@@ -84,6 +96,10 @@ class VideoProcessorTests(unittest.TestCase):
                 2,
             )
             self.assertIn(("concat_clips", 2), engine.calls)
+            self.assertIn(
+                ("add_voice", "silent_review.mp4", "voice.mp3", "review.mp4", 4.0),
+                engine.calls,
+            )
             self.assertTrue(any("Hoàn tất" in message for message in logs))
 
     def test_render_rejects_voice_without_audio_stream(self):

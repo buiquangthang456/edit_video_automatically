@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 from core.video_processor import VideoProcessor
@@ -32,6 +33,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     """Run the CLI entry point."""
+    _configure_console_encoding()
     args = parse_args()
     config = RenderConfig(
         script=args.script,
@@ -41,6 +43,14 @@ def main() -> None:
         resolution=args.resolution,
     )
     VideoProcessor().render(config)
+
+
+def _configure_console_encoding() -> None:
+    """Make Vietnamese paths and progress logs safe on Windows terminals."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8", errors="replace")
 
 
 if __name__ == "__main__":

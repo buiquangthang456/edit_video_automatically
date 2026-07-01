@@ -22,6 +22,18 @@ class SegmentationTests(unittest.TestCase):
         self.assertTrue(all(segment.source_start >= 0 for segment in segments))
         self.assertEqual(segments[-1].end, 30.0)
 
+    def test_make_segments_snaps_caption_boundary_to_nearby_voice_pause(self):
+        segments = make_segments(
+            ["một câu ngắn", "một câu dài hơn một chút"],
+            10.0,
+            60.0,
+            voice_boundaries=[3.9],
+        )
+
+        self.assertEqual(segments[0].end, 3.9)
+        self.assertEqual(segments[1].start, 3.9)
+        self.assertEqual(segments[-1].end, 10.0)
+
 
 if __name__ == "__main__":
     unittest.main()
